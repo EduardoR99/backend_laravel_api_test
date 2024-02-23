@@ -82,22 +82,39 @@ class RedirectController extends Controller
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'url_destino' => 'required|url|starts_with:https',
-        ]);
+{
+    // Validação dos dados recebidos na requisição
+    $validator = Validator::make($request->all(), [
+        'url_destino' => 'required|url|starts_with:https',
+    ]);
 
-        if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()->first()], 400);
-        }
-
-        $redirect = $this->redirectModel->create([
-            'url_destino' => $request->url_destino,
-            'ativo' => true,
-        ]);
-
-        return response()->json($redirect, 201);
+    // Verifica se a validação falhou e retorna os erros
+    if ($validator->fails()) {
+        return response()->json(['error' => $validator->errors()->first()], 400);
     }
+
+    // Obtém a URL de destino do payload
+    $url_destino = $request->input('url_destino');
+
+    // Verifica se a URL de destino aponta para a própria aplicação
+    if (Str::startsWith($url_destino, url('/'))) {
+        return response()->json(['error' => 'A URL de destino não pode apontar para a própria aplicação.'], 400);
+    }
+
+    // Verifica se a URL de destino está acessível
+    $response = Http::get($url_destino);
+    if (!$response->successful()) {
+        return response()->json(['error' => 'A URL de destino não está acessível ou retornou um status diferente de 200.'], 400);
+    }
+
+    // Cria o redirecionamento
+    $redirect = $this->redirectModel->create([
+        'url_destino' => $url_destino,
+        'ativo' => true,
+    ]);
+
+    return response()->json($redirect, 201);
+}
 
     /**
      * Display the specified resource.
@@ -112,33 +129,44 @@ class RedirectController extends Controller
      * Update the specified resource in storage.
      */
     public function update(Request $request, string $id)
-    {
-        $validator = Validator::make($request->all(), [
-            'url_destino' => 'required|url|starts_with:https',
-            'ativo' => 'required|boolean',
-        ]);
+{
+    // Validação dos dados recebidos na requisição
+    $validator = Validator::make($request->all(), [
+        'url_destino' => 'required|url|starts_with:https',
+        'ativo' => 'required|boolean',
+    ]);
 
-        if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()->first()], 400);
-        }
-
-        $redirect = $this->redirectModel->where('code', $id)->firstOrFail();
-        $redirect->update([
-            'url_destino' => $request->url_destino,
-            'ativo' => $request->ativo,
-        ]);
-
-        return response()->json($redirect, 200);
+    // Verifica se a validação falhou e retorna os erros
+    if ($validator->fails()) {
+        return response()->json(['error' => $validator->errors()->first()], 400);
     }
+
+    // Busca o redirecionamento pelo ID
+    $redirect = $this->redirectModel->where('code', $id)->firstOrFail();
+
+    // Atualiza os dados do redirecionamento
+    $redirect->update([
+        'url_destino' => $request->input('url_destino'),
+        'ativo' => $request->input('ativo'),
+    ]);
+
+    // Retorna o redirecionamento atualizado
+    return response()->json($redirect, 200);
+}
+
 
     /**
      * Remove the specified resource from storage.
      */
     public function destroy(string $id)
-    {
-        $redirect = $this->redirectModel->where('code', $id)->firstOrFail();
-        $redirect->delete();
+{
+    // Busca o redirecionamento pelo ID
+    $redirect = $this->redirectModel->where('code', $id)->firstOrFail();
 
-        return response()->json(null, 204);
-    }
+    // Marca o redirecionamento como desativado (Soft Delete)
+    $redirect->delete();
+
+    // Retorna uma resposta de sucesso
+    return response()->json(null, 204);
+}
 }
