@@ -4,7 +4,6 @@ namespace Database\Factories;
 
 
 use App\Models\Redirect;
-use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Vinkla\Hashids\Facades\Hashids;
 /**

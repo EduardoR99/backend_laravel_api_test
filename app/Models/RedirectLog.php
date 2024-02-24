@@ -8,4 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 class RedirectLog extends Model
 {
     use HasFactory;
+    protected $fillable = [
+        'redirect_id',
+        'redirect_id_code',
+        'ip',
+        'user_agent',
+        'header_referer',
+        'query_params'
+    ];
 }

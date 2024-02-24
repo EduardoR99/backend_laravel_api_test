@@ -3,62 +3,67 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\RedirectLog;
+use Carbon\Carbon;
 
 class RedirectLogController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    protected $redirectLogModel;
+
+    public function __construct( RedirectLog $redirectLogModel)
     {
-        //
+        $this->redirectLogModel = $redirectLogModel;
+    }
+    
+    public function index($redirectId)
+    {
+        $logs = $this->redirectLogModel->where('redirect_id_code', $redirectId)->get();
+
+        return response()->json($logs);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function stats($redirectId)
     {
-        //
-    }
+        $logs = RedirectLog::where('redirect_id_code', $redirectId)->get();
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
+        $totalAccesses = $logs->count();
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
+        $uniqueAccesses = $logs->unique('ip')->count();
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
+        $topReferrers = $logs->groupBy('referer')->sortByDesc(function ($group) {
+            return count($group);
+        })->take(10)->map(function ($group) {
+            return [
+                'referer' => $group->first()->referer,
+                'count' => count($group),
+            ];
+        });
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
+        $lastTenDays = [];
+        $startDate = Carbon::now()->subDays(9)->startOfDay(); 
+        $endDate = Carbon::now()->endOfDay(); 
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        for ($date = $startDate; $date->lte($endDate); $date->addDay()) {
+            $total = RedirectLog::where('redirect_id', $redirectId)
+                ->whereDate('created_at', $date)
+                ->count();
+
+            $unique = RedirectLog::where('redirect_id', $redirectId)
+                ->whereDate('created_at', $date)
+                ->distinct('ip')
+                ->count('ip');
+
+            $lastTenDays[] = [
+                'date' => $date->toDateString(),
+                'total' => $total,
+                'unique' => $unique,
+            ];
+        }
+        return response()->json([
+            'total_accesses' => $totalAccesses,
+            'unique_accesses' => $uniqueAccesses,
+            'top_referrers' => $topReferrers,
+            'last_ten_days' => $lastTenDays,
+        ]);
     }
 }

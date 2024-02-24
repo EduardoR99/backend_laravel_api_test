@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('redirects', function (Blueprint $table) {
             $table->id();
-            $table->string('code');
+            $table->string('code')->unique();;
             $table->string('url_destino');
             $table->boolean('ativo')->default(true);
             $table->dateTime('ultimo_acesso')->nullable();

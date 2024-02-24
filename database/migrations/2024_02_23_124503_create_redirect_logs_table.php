@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('redirect_logs', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('redirect_id');
+            $table->string('redirect_id_code');
             $table->string('ip');
             $table->string('user_agent');
             $table->string('header_referer')->nullable();
